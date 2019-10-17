@@ -12,7 +12,7 @@ host = '192.168.32.99'
 user = 'admin'
 password = 'tufin123'
 headers = {}
-debug = False 
+debug = False
 
 def http_post(url, data, headers=headers):
     try:
@@ -93,6 +93,8 @@ def menu():
     print("4: Get domain")
     print("5: Get path for specified traffic")
     print("6: Get path image for specified traffic")
+    print("7: Get ticket list")
+    print("8: Get ticket list")
     print("0: quit")
     print("========================================")
     try:
@@ -124,6 +126,9 @@ def menu():
         dst = input("Input Destination IP (eg. 10.0.0.0:24, 172.16.40.1): ")
         service = input("Input Service (eg. tcp:80, facebook): ")
         uri = f"securetrack/api/topology/path_image?src={src}&dst={dst}&service={service}"
+    elif reqid == 7:
+        text = input("Input Search Text (\"*\" for every ticket): ")
+        uri = f"securechangeworkflow/api/securechange/tickets/free_text_search/?parameter={text}"
     else:
         reqid = 0
         uri = ""
@@ -199,6 +204,16 @@ def apicall(uri, reqid):
 
     elif reqid == 6:
         pass
+    elif reqid == 7:
+        print("ID:  Subject:            Workflow:")
+        print("---------------------------------------------------")
+        for tickets in rdict['tickets_search_results']['ticket_result']:
+            if debug:
+                print("Ticket Results:")
+                print(tickets)
+
+            print(f"{tickets['id']:<5}{tickets['subject']:<20}{tickets['workflowName']}")
+
 
 if  __name__ == "__main__":
     if sys.argv[1:4]:
