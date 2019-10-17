@@ -1,0 +1,5 @@
+name,subnet,description
+External,172.16.10.0/24,
+DMZ,172.16.11.0/24,
+Internal1,192.168.2.0/24,
+Internal2,192.168.4.0/24,
