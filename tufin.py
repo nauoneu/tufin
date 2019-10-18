@@ -12,18 +12,19 @@ host = '192.168.32.99'
 user = 'admin'
 password = 'tufin123'
 headers = {}
-debug = False
+debug = ""
 
 def http_post(url, data, headers=headers):
     try:
-        r = requests.post(url=url, headers=headers, auth=HTTPBasicAuth(user,password), data=data, verify=False)
+        r = requests.post(url=url, headers=headers, data=data, auth=HTTPBasicAuth(user,password), verify=False)
     except requests.exceptions.RequestException as e:
         print(e, file=sys.stderr)
         return
 
     if debug:
         print("HTTP POST response:")
-        pprint(r)
+        print(r.text)
+        print(r)
 
     return r
 
@@ -93,8 +94,10 @@ def menu():
     print("4: Get domain")
     print("5: Get path for specified traffic")
     print("6: Get path image for specified traffic")
-    print("7: Get ticket list")
-    print("8: Get ticket list")
+    print("7: Get SecureChabge ticket list")
+    print("8: Get SecureChange user list")
+    print("9: Get SecureChange workflow detail")
+#    print("101: Create SecureChange ticket")
     print("0: quit")
     print("========================================")
     try:
@@ -106,40 +109,152 @@ def menu():
 
     if reqid == 0:
         uri = "quit"
+        data = ""
     elif reqid == 1:
         uri = "securetrack/api/devices/"
+        data = ""
     elif reqid == 2:
         devid = int(input("Input device ID:"))
         uri = f"securetrack/api/devices/{devid}"
+        data = ""
     elif reqid == 3:
         uri = "securetrack/api/domains/"
+        data = ""
     elif reqid == 4:
         domid = input("Input domain ID:")
         uri = f"securetrack/api/domains/{domid}"
+        data = ""
     elif reqid == 5:
         src = input("Input Source IP (eg. 10.0.0.0:24, 192.168.3.100): ")
         dst = input("Input Destination IP (eg. 10.0.0.0:24, 172.16.40.1): ")
         service = input("Input Service (eg. tcp:80, facebook): ")
         uri = f"securetrack/api/topology/path?src={src}&dst={dst}&service={service}"
+        data = ""
     elif reqid == 6:
         src = input("Input Source IP (eg. 10.0.0.0:24, 192.168.3.100): ")
         dst = input("Input Destination IP (eg. 10.0.0.0:24, 172.16.40.1): ")
         service = input("Input Service (eg. tcp:80, facebook): ")
         uri = f"securetrack/api/topology/path_image?src={src}&dst={dst}&service={service}"
+        data = ""
     elif reqid == 7:
         text = input("Input Search Text (\"*\" for every ticket): ")
         uri = f"securechangeworkflow/api/securechange/tickets/free_text_search/?parameter={text}"
+        data = ""
+    elif reqid == 8:
+#        scuser = input("Input user name: ")
+#        uri = f"securechangeworkflow/api/securechange/users?user_name={scuser}&exact_name=true"
+        uri = f"securechangeworkflow/api/securechange/users/"
+        data = ""
+    elif reqid == 9:
+#        wfname = input("Input workflow name: ")
+        wfid = input("Input workflow ID: ")
+#        uri = f"securechangeworkflow/api/securechange/workflows?name={wfname}"
+        uri = f"securechangeworkflow/api/securechange/workflows?id={wfid}"
+        data = ""
+    elif reqid == 101:
+#        text = input("Input Search Text (\"*\" for every ticket): ")
+        uri = f"securechangeworkflow/api/securechange/tickets"
+        """
+        data = {
+            "ticket": {
+                "application_details": { "id": "1" },
+                "subject": "topology mode_AR1-with topology_AR2-no topology",
+                "priority": "Normal",
+                "workflow": { "name": "ar" }
+            }
+        }
+        """
+        data = {
+            "ticket":{
+                "subject": "Test_Subject",
+                "requester": "r",
+                "requester_id": "4",
+                "priority": "Normal",
+                "domain_name": "Default",
+                "workflow":{
+                    "id": "7",
+                    "name": "Firewall Access Request",
+                    "uses_topology":"true"
+                },
+                "steps":{
+                    "step":{
+                        "name": "Submit Access Request",
+                        "redone": "false",
+                        "skipped": "false",
+                        "tasks":{
+                            "task":{
+                                "fields": [
+                                    {
+                                    "field":{
+                                        "@xsi.type": "multi_access_request",
+                                        "name": "Required Access",
+                                        "read_only": "false",
+                                        "access_request":{
+                                            "use_topology":"true",
+                                            "targets":{
+                                                "target": {
+                                                    "@type": "ANY"
+                                                }
+                                            },
+                                            "users": {
+                                                "user":[
+                                                    "Any"
+                                                ]
+                                            },
+                                            "sources":{
+                                                "source":[
+                                                    {
+                                                        "@type": "IP",
+                                                        "ip_address": "1.1.1.1",
+                                                        "netmask":"255.255.255.255"
+                                                    }
+                                                ]
+                                            },
+                                            "destinations":{
+                                                "destination":[
+                                                    {
+                                                        "@type": "IP",
+                                                        "ip_address": "2.2.2.2",
+                                                        "netmask": "255.255.255.255"
+                                                    }
+                                                ]
+                                            },
+                                            "services":{
+                                                "service":[
+                                                    {
+                                                        "@type":"ANY"
+                                                    }
+                                                ]
+                                            },
+                                            "action": "Accept"
+                                        }
+                                    }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        pprint(data)
     else:
         reqid = 0
         uri = ""
+        data = ""
 
-    return uri, reqid
+    return uri, reqid, data
 
-def apicall(uri, reqid):
+def apicall(uri, reqid, method, data):
     headers['Accept'] = 'application/json'
     url = f"https://{host}/{uri}"
     print(url)
-    res = http_get(url)
+
+    if method == "get":
+        res = http_get(url, headers)
+    elif method == "post":
+        res = http_post(url, data, headers)
+
     if not check_response(res):
         return
     rdict = get_json(res)
@@ -214,8 +329,33 @@ def apicall(uri, reqid):
 
             print(f"{tickets['id']:<5}{tickets['subject']:<20}{tickets['workflowName']}")
 
+    elif reqid == 8:
+        if debug:
+            print("SecureChange Users:")
+            pprint(res.json())
+        print("ID:  Name:")
+        print("--------------")
+        for scuser in rdict['users']['user']:
+            if scuser['@xsi.type'] == "user":
+                print(f"{scuser['id']:<5}{scuser['name']}")
 
-if  __name__ == "__main__":
+    elif reqid == 9:
+        pprint(res.json())
+
+    elif reqid == 101:
+        pprint(res.json())
+
+if __name__ == "__main__":
+    try:
+        sys.argv[4:]
+    except:
+        debug = False
+#        print("no verbose option")
+    else:
+        if sys.argv[-1] == "-v":
+            debug = True
+#            print("set verbose mode")
+
     if sys.argv[1:4]:
         host, user, password = sys.argv[1:4]
     else:
@@ -225,10 +365,13 @@ if  __name__ == "__main__":
         print(f"host: {host}, user: {user}, password: {password}")
 
     while True:
-        uri, reqid = menu()
+        uri, reqid, data = menu()
         if reqid == 0:
             print("quit the menu...")
             break
+        elif reqid > 100:
+            method = "post"
         else:
-            apicall(uri, reqid)
+            method = "get"
+        apicall(uri, reqid, method, data)
 
