@@ -17,6 +17,7 @@ debug = ""
 def http_post(url, data, headers=headers):
     try:
         r = requests.post(url=url, headers=headers, data=data, auth=HTTPBasicAuth(user,password), verify=False)
+#        r = requests.post(url=url, headers=headers, json.dumps(data), auth=HTTPBasicAuth(user,password), verify=False)
     except requests.exceptions.RequestException as e:
         print(e, file=sys.stderr)
         return
@@ -97,6 +98,7 @@ def menu():
     print("7: Get SecureChabge ticket list")
     print("8: Get SecureChange user list")
     print("9: Get SecureChange workflow detail")
+    print("10: Get matching rules for specified traffic")
 #    print("101: Create SecureChange ticket")
     print("0: quit")
     print("========================================")
@@ -151,6 +153,13 @@ def menu():
 #        uri = f"securechangeworkflow/api/securechange/workflows?name={wfname}"
         uri = f"securechangeworkflow/api/securechange/workflows?id={wfid}"
         data = ""
+    elif reqid == 10:
+        devid = int(input("Input device ID:"))
+        src = input("Input Source IP (eg. 10.0.0.0:24, 192.168.3.100): ")
+        dst = input("Input Destination IP (eg. 10.0.0.0:24, 172.16.40.1): ")
+        service = input("Input Service (eg. tcp:80, facebook): ")
+        uri = f"securetrack/api/policy_analysis/query/matching_rules?device_ids={devid}&sources={src}&destinations={dst}&services={service}"
+        data = ""
     elif reqid == 101:
 #        text = input("Input Search Text (\"*\" for every ticket): ")
         uri = f"securechangeworkflow/api/securechange/tickets"
@@ -172,19 +181,18 @@ def menu():
                 "priority": "Normal",
                 "domain_name": "Default",
                 "workflow":{
-                    "id": "7",
+                    "id": "66",
                     "name": "Firewall Access Request",
                     "uses_topology":"true"
                 },
-                "steps":{
+                "steps":[{
                     "step":{
                         "name": "Submit Access Request",
                         "redone": "false",
                         "skipped": "false",
-                        "tasks":{
+                        "tasks":[{
                             "task":{
-                                "fields": [
-                                    {
+                                "fields": [{
                                     "field":{
                                         "@xsi.type": "multi_access_request",
                                         "name": "Required Access",
@@ -229,21 +237,65 @@ def menu():
                                             "action": "Accept"
                                         }
                                     }
-                                    }
-                                ]
+                                }]
                             }
-                        }
+                        }]
                     }
-                }
+                }]
             }
         }
         pprint(data)
+
+    elif reqid == 102:
+        uri = f"securetrack/api/zones/"
+        data = {
+            "zone":{
+                "domain": "Customer1",
+                "internet": False,
+                "unassociated_networks": False,
+                "userNetworks": False,
+                "shared": False,
+                "name": "Test zone",
+                "id": 10
+            }
+        }
+        """
+            ZoneDTO (Root Element = zone ) {
+                domain (DomainDTO, optional): The zone domain.,
+                internet (boolean, optional): Is the zone the Internet zone,
+                unassociated_networks (boolean, optional): Is the zone the Unassociated networks zone,
+                userNetworks (boolean, optional): Is the zone the Users Networks zone,
+                importing_domain (array[DomainDTO], optional): Domains that import this zone.,
+                comment (string, optional): The zone comment.,
+                shared (boolean, optional): Is the zone shared between domains.,
+                name (string): The name of the zone,
+                id (string): The ID of the zone
+            }
+            DomainDTO {
+                description (string, optional): The Description,
+                address (string, optional): The Address,
+                name (string): The Name,
+                id (string, optional): The id
+            }
+        """
+    elif reqid == 103:
+        uri = f"securetrack/api/domains/"
+        data = {
+            "domain":{
+                "description": "description",
+                "address": "",
+                "name": "newdom1",
+                "id": "123"
+            }
+        }
+
     else:
         reqid = 0
         uri = ""
         data = ""
 
-    return uri, reqid, data
+#    return uri, reqid, data
+    return uri, reqid, json.dumps(data, default=lambda o: o.__dict__, indent=4)
 
 def apicall(uri, reqid, method, data):
     headers['Accept'] = 'application/json'
@@ -253,6 +305,8 @@ def apicall(uri, reqid, method, data):
     if method == "get":
         res = http_get(url, headers)
     elif method == "post":
+        headers['Content-Type'] = 'application/json'
+#        headers['Content-Length'] = ''
         res = http_post(url, data, headers)
 
     if not check_response(res):
@@ -323,11 +377,13 @@ def apicall(uri, reqid, method, data):
         print("ID:  Subject:            Workflow:")
         print("---------------------------------------------------")
         for tickets in rdict['tickets_search_results']['ticket_result']:
+#        for tickets in rdict['tickets_search_results']:
             if debug:
                 print("Ticket Results:")
-                print(tickets)
+                pprint(tickets)
 
             print(f"{tickets['id']:<5}{tickets['subject']:<20}{tickets['workflowName']}")
+#            print(f"{tickets[0]}")
 
     elif reqid == 8:
         if debug:
@@ -342,7 +398,13 @@ def apicall(uri, reqid, method, data):
     elif reqid == 9:
         pprint(res.json())
 
+    elif reqid == 10:
+        pprint(res.json())
+
     elif reqid == 101:
+        pprint(res.json())
+
+    elif reqid == 102:
         pprint(res.json())
 
 if __name__ == "__main__":
@@ -350,11 +412,11 @@ if __name__ == "__main__":
         sys.argv[4:]
     except:
         debug = False
-#        print("no verbose option")
+        print("no verbose option")
     else:
         if sys.argv[-1] == "-v":
             debug = True
-#            print("set verbose mode")
+            print("set verbose mode")
 
     if sys.argv[1:4]:
         host, user, password = sys.argv[1:4]
